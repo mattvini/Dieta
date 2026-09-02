@@ -92,6 +92,7 @@
 <nav>
   <button data-t="hoje" class="on">Hoje</button>
   <button data-t="peso">Peso</button>
+  <button data-t="compras">Compras</button>
   <button data-t="fotos">Fotos</button>
 </nav>
 
@@ -234,6 +235,15 @@ function analisar(txt){
   });
 }
 
+const COMPRAS=[
+ {c:"Carnes",i:["Patinho moído — 1 kg","Alcatra — 250 g","Frango (peito ou sobrecoxa) — 500 g","Músculo ou acém para desfiar — 700 g","Ovos — 3 dúzias"]},
+ {c:"Laticínios",i:["Iogurte natural desnatado — 1,5 kg","Queijo minas frescal — 200 g","Requeijão light — 1 pote","Creme de ricota — 1 pote (molho)","Leite desnatado — 1 L"]},
+ {c:"Carboidratos",i:["Arroz — 300 g","Batata doce — 600 g","Abóbora — 300 g","Macarrão — 1 pacote","Aveia em flocos — 500 g","Flocão de milho (cuscuz) — 500 g","Goma de tapioca — 500 g","Pão de forma integral — 1 pacote","Torradas integrais — 1 pacote","Tortilla integral — 1 pacote"]},
+ {c:"Legumes e verduras",i:["Brócolis — 500 g","Couve-flor — 1 unidade","Abobrinha — 2 unidades","Cenoura — 3 unidades","Pimentão — 2 unidades","Cebola — 4 unidades","Tomate — 6 unidades","Alface e rúcula — 2 pacotes","Pepino — 2 unidades","Alho — 1 cabeça","Champignon — 1 vidro (molho)"]},
+ {c:"Frutas",i:["Banana — 1 penca","Maçã — 4 unidades","Frutas vermelhas congeladas — 300 g","Limão — 2 unidades"]},
+ {c:"Molhos e temperos",i:["Azeite","Vinagre de vinho tinto","Mostarda dijon","Mel","Extrato de tomate","Molho de tomate","Salsa fresca","Orégano","Páprica defumada","Cominho","Canela","Pimenta calabresa"]},
+ {c:"Outros",i:["Geleia — 1 pote","Barrinhas de proteína — 1 caixa","Creatina — 5 g/dia","Café"]}];
+
 const DIAS={
  1:{nome:"Segunda",molho:"Chimichurri",opt:[0,0,0,0,0]},
  2:{nome:"Terça",molho:"Mostarda e mel",opt:[1,1,2,1,1]},
@@ -283,7 +293,7 @@ const salvar=d=>gravar("dia:"+data,d)||aviso("Não deu para salvar.");
 
 function render(){
   data=hj();
-  document.getElementById("app").innerHTML=aba==="hoje"?viewHoje():aba==="peso"?viewPeso():viewFotos();
+  document.getElementById("app").innerHTML=aba==="hoje"?viewHoje():aba==="peso"?viewPeso():aba==="compras"?viewCompras():viewFotos();
   liga();
   document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.t===aba));
 }
@@ -397,6 +407,22 @@ function grafico(ps){
    d.map((p,i)=>'<circle cx="'+X(i)+'" cy="'+Y(p.kg)+'" r="2.5" fill="#24486B"/>').join("")+'</svg></div>';
 }
 
+function viewCompras(){
+  const mk=ler("compras")||{};
+  const tot=COMPRAS.reduce((a,g)=>a+g.i.length,0);
+  const feitos=Object.values(mk).filter(Boolean).length;
+  let s='<div class="wrap"><h1>Compras</h1><p class="sub">Para o preparo de domingo &middot; rende a semana toda</p>'+
+   '<p class="lbl">'+feitos+' de '+tot+' itens</p>';
+  COMPRAS.forEach((g,gi)=>{
+    s+='<div class="card" style="padding:15px 16px;margin-bottom:10px">'+
+       '<div class="mhead"><b>'+esc(g.c)+'</b></div><ul class="items">'+
+       g.i.map((it,ii)=>{const id=gi+"-"+ii;
+         return '<li class="item'+(mk[id]?" on":"")+'" data-comp="'+id+'"><span class="cb">'+(mk[id]?"\u2713":"")+
+                '</span><span class="tx">'+esc(it)+'</span></li>'}).join("")+'</ul></div>';
+  });
+  return s+'<button class="btn full" id="climpar" style="background:var(--card);color:var(--warn);border:1px solid var(--line)">Desmarcar tudo</button></div>';
+}
+
 function viewFotos(){
   const idx=ler("fotos-idx")||[];
   let s='<div class="wrap"><h1>Fotos</h1><p class="sub">Mesma luz, mesmo ângulo, uma vez por semana</p>'+
@@ -425,6 +451,12 @@ function liga(){
   document.querySelectorAll("[data-hab]").forEach(el=>el.onclick=()=>{
     const d=dia(), k=el.dataset.hab; d.hab[k]=!d.hab[k]; salvar(d); render();
   });
+  document.querySelectorAll("[data-comp]").forEach(el=>el.onclick=()=>{
+    const mk=ler("compras")||{}, id=el.dataset.comp;
+    mk[id]=!mk[id]; gravar("compras",mk); render();
+  });
+  const cl=document.getElementById("climpar");
+  if(cl) cl.onclick=()=>{gravar("compras",{}); render()};
   const ea=document.getElementById("eadd"), ei=document.getElementById("ein");
   if(ea) ea.onclick=()=>{
     const t=(ei.value||"").trim();
@@ -464,7 +496,7 @@ function liga(){
       gravar("fotos-idx",idx); fotoSel=data; render();
     }).catch(()=>{fb.textContent="Adicionar foto de hoje";aviso("Não deu para salvar a foto. O armazenamento pode estar cheio.")});
   };
-  document.querySelectorAll("[data-foto]").forEach(el=>el.onclick=()=>{fotoSel=el.dataset.foto;render()});
+  document.querySelectorAll("[data-foto]").forEach(el=>el.onclick=()=>{fotoSel=fotoSel===el.dataset.foto?null:el.dataset.foto;render()});
 }
 
 function comprimir(file){
